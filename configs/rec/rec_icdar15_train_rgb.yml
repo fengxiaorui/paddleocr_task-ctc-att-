@@ -1,0 +1,109 @@
+Global:
+  use_gpu: True
+  epoch_num: 120
+  log_smooth_window: 20
+  print_batch_step: 500
+  save_model_dir: ./output/competition_my_rec_mv3_none_bilstm_ctc_balance_20210526_rgb
+  save_epoch_step: 1
+  # evaluation is run every 2000 iterations
+  eval_batch_step: [0, 20000]
+  cal_metric_during_train: True
+  pretrained_model: /media/cv/05e0b7d2-56e9-4af1-8c14-037b49555090/xiaorui.feng/paddle/PaddleOCR/output/competition_my_rec_mv3_none_bilstm_ctc_balance_20210525_rgb/best_accuracy
+  checkpoints:
+  save_inference_dir:
+  use_visualdl: False
+  infer_img: doc/imgs_words_en/word_10.png
+  # for data or label process
+  character_dict_path: /media/cv/05e0b7d2-56e9-4af1-8c14-037b49555090/xiaorui.feng/paddle/PaddleOCR/train_data/label_dict.txt
+  character_type: ch
+  max_text_length: 25
+  infer_mode: False
+  use_space_char: True
+  save_res_path: ./output/rec/predicts_ic15.txt
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Cosine
+    learning_rate: 0.001
+  regularizer:
+    name: 'L2'
+    factor: 0
+
+Architecture:
+  model_type: rec
+  algorithm: CRNN
+  Transform:
+  Backbone:
+    name: MobileNetV3
+    scale: 0.5
+    model_name: small
+    small_stride: [1, 2, 2, 2]
+  Neck:
+    name: SequenceEncoder
+    encoder_type: rnn
+    hidden_size: 96
+  Head:
+    name: CTCHead
+    fc_decay: 0
+
+Loss:
+  name: CTCLoss
+
+PostProcess:
+  name: CTCLabelDecode
+
+Metric:
+  name: RecMetric
+  main_indicator: acc
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/train_rgb/
+    label_file_list: ["./train_data/train_rgb/train_20210526.txt"]
+    # data_dir: ./train_data/train/
+    # label_file_list: ["./train_data/train_20210517.txt"]
+    transforms:
+      - DecodeImage: # load image
+          img_mode: BGR
+          channel_first: False
+      - RecAug:
+          use_tia: True
+          aug_prob: 0.4
+      - CTCLabelEncode: # Class handling label
+      - RecResizeImg:
+          image_shape: [3, 32, 320]
+      - KeepKeys:
+          keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
+  loader:
+    shuffle: True
+    batch_size_per_card: 128
+    drop_last: True
+    num_workers: 4
+    use_shared_memory: False
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: ./train_data/train_rgb/
+    label_file_list: ["./train_data/train_rgb/LabelTest.txt"]
+    # data_dir: ./train_data/train/
+    # label_file_list: ["./train_data/LabelTest_changed.txt"]
+    transforms:
+      - DecodeImage: # load image
+          img_mode: BGR
+          channel_first: False
+      - CTCLabelEncode: # Class handling label
+      - RecResizeImg:
+          image_shape: [3, 32, 320]
+      - KeepKeys:
+          keep_keys: ['image', 'label', 'length'] # dataloader will return list in this order
+  loader:
+    shuffle: False
+    drop_last: False
+    batch_size_per_card: 128
+    num_workers: 4
+    use_shared_memory: False
